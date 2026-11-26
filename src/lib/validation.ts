@@ -15,6 +15,7 @@ export const postInputSchema = z.object({
     .nullable(),
   status: z.enum(POST_STATUSES),
   imageIdea: z.string().max(5000),
+  media: z.array(z.string().regex(/^\/api\/media\/[a-f0-9-]+\.[a-z0-9]+$/)).max(20).default([]),
   videoScript: z.string().max(10000),
   notes: z.string().max(5000),
 });

@@ -52,6 +52,7 @@ function PlanPageContent() {
         scheduledAt: `${item.date}T${item.time}`,
         status: "bozza",
         imageIdea: "",
+        media: [],
         videoScript: "",
         notes: `${item.idea}\n\nPerché: ${item.reason}`,
       }));
