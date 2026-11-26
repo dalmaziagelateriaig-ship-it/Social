@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button, Card, ErrorBox, Field, PageHeader, PlatformPicker, Spinner, inputClass } from "@/components/ui";
+import { MediaGallery } from "@/components/MediaGallery";
 import { api } from "@/lib/api";
 import type { GeneratedPost } from "@/lib/ai";
 import {
@@ -43,6 +44,7 @@ function CreateForm() {
   });
   const [result, setResult] = useState<GeneratedPost | null>(null);
   const [scheduledAt, setScheduledAt] = useState("");
+  const [media, setMedia] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,6 +76,7 @@ function CreateForm() {
       scheduledAt: scheduledAt || null,
       status: scheduledAt ? "programmato" : "bozza",
       imageIdea: result.imageIdea,
+      media,
       videoScript: result.videoScript,
       notes: `Orario consigliato dall'AI: ${result.suggestedTime}`,
     };
@@ -170,6 +173,9 @@ function CreateForm() {
                 <CopyButton text={result.imageIdea} />
               </div>
               <p className="whitespace-pre-line text-sm text-stone-700">{result.imageIdea}</p>
+              <div className="mt-4">
+                <MediaGallery media={media} onChange={setMedia} defaultPrompt={result.imageIdea} />
+              </div>
             </Card>
             {result.videoScript && (
               <Card>

@@ -12,6 +12,7 @@ import {
   type Post,
   type PostInput,
 } from "@/lib/types";
+import { MediaGallery } from "./MediaGallery";
 import { Button, ErrorBox, Field, PlatformPicker, Spinner, inputClass } from "./ui";
 
 export function emptyPost(scheduledAt: string | null = null): PostInput {
@@ -24,6 +25,7 @@ export function emptyPost(scheduledAt: string | null = null): PostInput {
     scheduledAt,
     status: "bozza",
     imageIdea: "",
+    media: [],
     videoScript: "",
     notes: "",
   };
@@ -49,6 +51,7 @@ export function PostEditor({
     scheduledAt: post.scheduledAt,
     status: post.status,
     imageIdea: post.imageIdea,
+    media: post.media ?? [],
     videoScript: post.videoScript,
     notes: post.notes,
   }));
@@ -189,6 +192,11 @@ export function PostEditor({
           <Field label="Idea per foto o grafica">
             <textarea rows={3} className={inputClass} value={draft.imageIdea} onChange={(e) => set("imageIdea", e.target.value)} />
           </Field>
+
+          <div>
+            <span className="mb-1 block text-sm font-medium text-stone-700">Foto e video</span>
+            <MediaGallery media={draft.media} onChange={(m) => set("media", m)} defaultPrompt={draft.imageIdea} />
+          </div>
 
           {(draft.type === "reel" || draft.platforms.includes("tiktok") || draft.videoScript) && (
             <Field label="Copione video">

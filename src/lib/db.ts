@@ -38,6 +38,11 @@ function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS posts_scheduled_at ON posts (scheduled_at);
   `);
+  // Columns added after the first version.
+  const columns = (db.prepare("PRAGMA table_info(posts)").all() as { name: string }[]).map((c) => c.name);
+  if (!columns.includes("media")) {
+    db.exec("ALTER TABLE posts ADD COLUMN media TEXT NOT NULL DEFAULT '[]'");
+  }
   return db;
 }
 
@@ -51,6 +56,7 @@ type PostRow = {
   scheduled_at: string | null;
   status: string;
   image_idea: string;
+  media: string;
   video_script: string;
   notes: string;
   created_at: string;
@@ -67,6 +73,7 @@ function rowToPost(row: PostRow): Post {
     scheduledAt: row.scheduled_at,
     status: row.status as Post["status"],
     imageIdea: row.image_idea,
+    media: JSON.parse(row.media),
     videoScript: row.video_script,
     notes: row.notes,
     createdAt: row.created_at,
@@ -116,8 +123,8 @@ export function getPost(id: number): Post | null {
 export function createPost(input: PostInput): Post {
   const result = getDb()
     .prepare(
-      `INSERT INTO posts (title, type, platforms, captions, hashtags, scheduled_at, status, image_idea, video_script, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO posts (title, type, platforms, captions, hashtags, scheduled_at, status, image_idea, media, video_script, notes, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.title,
@@ -128,6 +135,7 @@ export function createPost(input: PostInput): Post {
       input.scheduledAt,
       input.status,
       input.imageIdea,
+      JSON.stringify(input.media),
       input.videoScript,
       input.notes,
       new Date().toISOString(),
@@ -139,7 +147,7 @@ export function updatePost(id: number, input: PostInput): Post | null {
   getDb()
     .prepare(
       `UPDATE posts SET title = ?, type = ?, platforms = ?, captions = ?, hashtags = ?, scheduled_at = ?,
-       status = ?, image_idea = ?, video_script = ?, notes = ? WHERE id = ?`,
+       status = ?, image_idea = ?, media = ?, video_script = ?, notes = ? WHERE id = ?`,
     )
     .run(
       input.title,
@@ -150,6 +158,7 @@ export function updatePost(id: number, input: PostInput): Post | null {
       input.scheduledAt,
       input.status,
       input.imageIdea,
+      JSON.stringify(input.media),
       input.videoScript,
       input.notes,
       id,

@@ -39,6 +39,8 @@ export interface Post {
   scheduledAt: string | null;
   status: PostStatus;
   imageIdea: string;
+  /** URLs of photos and videos attached to the post (served from /api/media). */
+  media: string[];
   videoScript: string;
   notes: string;
   createdAt: string;
