@@ -29,6 +29,20 @@ I dati sono salvati in un database SQLite in `data/app.db`, foto e video in `dat
 
 Per creare immagini con l'AI serve anche una chiave di OpenAI **oppure** di Google Gemini (vedi `.env.example`): Claude scrive i testi e descrive l'immagine, il servizio di immagini la disegna.
 
+## Pubblicare l'app online (Railway)
+
+L'app gira in un container Docker con un disco per database, foto e video. Su [Railway](https://railway.com):
+
+1. Crea un account e scegli **New Project › Deploy from GitHub repo**, poi questo repository.
+2. Nel servizio, apri **Variables** e aggiungi:
+   - `ANTHROPIC_API_KEY`: la chiave di Claude
+   - `APP_PASSWORD`: la password per entrare nell'app (il nome utente può essere qualsiasi)
+   - facoltativo `OPENAI_API_KEY` o `GEMINI_API_KEY` per le immagini
+3. Aggiungi un **Volume** montato su `/data` (lì restano database, foto e video).
+4. In **Settings › Networking** clicca **Generate Domain**: quello è il link dell'app.
+
+Ogni modifica unita al ramo `main` viene pubblicata in automatico.
+
 ## Struttura
 
 - `src/app/` pagine e API (`src/app/api/...`)
