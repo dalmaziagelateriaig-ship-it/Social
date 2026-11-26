@@ -7,8 +7,8 @@ export async function POST() {
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-    const upcoming = listPosts().filter((p) => !p.scheduledAt || p.scheduledAt >= todayKey);
-    return Response.json(await suggestIdeas({ profile: getProfile(), upcoming }));
+    const upcoming = (await listPosts()).filter((p) => !p.scheduledAt || p.scheduledAt >= todayKey);
+    return Response.json(await suggestIdeas({ profile: await getProfile(), upcoming }));
   } catch (error) {
     return errorResponse(error);
   }

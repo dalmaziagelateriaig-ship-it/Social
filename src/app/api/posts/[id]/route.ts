@@ -6,14 +6,14 @@ import { postInputSchema } from "@/lib/validation";
 const notFound = () => Response.json({ error: "Post non trovato" }, { status: 404 });
 
 export async function GET(_req: NextRequest, ctx: RouteContext<"/api/posts/[id]">) {
-  const post = getPost(Number((await ctx.params).id));
+  const post = await getPost(Number((await ctx.params).id));
   return post ? Response.json(post) : notFound();
 }
 
 export async function PUT(request: NextRequest, ctx: RouteContext<"/api/posts/[id]">) {
   try {
     const id = Number((await ctx.params).id);
-    const post = updatePost(id, postInputSchema.parse(await request.json()));
+    const post = await updatePost(id, postInputSchema.parse(await request.json()));
     return post ? Response.json(post) : notFound();
   } catch (error) {
     return errorResponse(error);
@@ -21,6 +21,6 @@ export async function PUT(request: NextRequest, ctx: RouteContext<"/api/posts/[i
 }
 
 export async function DELETE(_req: NextRequest, ctx: RouteContext<"/api/posts/[id]">) {
-  deletePost(Number((await ctx.params).id));
+  await deletePost(Number((await ctx.params).id));
   return new Response(null, { status: 204 });
 }

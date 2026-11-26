@@ -1,11 +1,11 @@
 import fs from "node:fs";
 import { Readable } from "node:stream";
 import type { NextRequest } from "next/server";
-import { mediaFile } from "@/lib/media";
+import { localMediaFile } from "@/lib/media";
 
 /** Serves an uploaded or generated file. Supports Range requests so videos can seek. */
 export async function GET(request: NextRequest, ctx: RouteContext<"/api/media/[name]">) {
-  const file = mediaFile((await ctx.params).name);
+  const file = localMediaFile((await ctx.params).name);
   if (!file) return new Response("Non trovato", { status: 404 });
   const size = fs.statSync(file.filePath).size;
   const headers: Record<string, string> = {

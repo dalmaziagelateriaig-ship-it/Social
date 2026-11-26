@@ -15,7 +15,7 @@ const bodySchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const body = bodySchema.parse(await request.json());
-    return Response.json(await generatePost({ ...body, profile: getProfile() }));
+    return Response.json(await generatePost({ ...body, profile: await getProfile() }));
   } catch (error) {
     return errorResponse(error);
   }

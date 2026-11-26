@@ -1,5 +1,8 @@
 import { z } from "zod";
+import { isMediaUrl } from "./media";
 import { PLATFORMS, POST_STATUSES, POST_TYPES } from "./types";
+
+export const mediaUrlSchema = z.string().max(500).refine(isMediaUrl, "File non valido");
 
 export const platformSchema = z.enum(PLATFORMS);
 
@@ -15,7 +18,7 @@ export const postInputSchema = z.object({
     .nullable(),
   status: z.enum(POST_STATUSES),
   imageIdea: z.string().max(5000),
-  media: z.array(z.string().regex(/^\/api\/media\/[a-f0-9-]+\.[a-z0-9]+$/)).max(20).default([]),
+  media: z.array(mediaUrlSchema).max(20).default([]),
   videoScript: z.string().max(10000),
   notes: z.string().max(5000),
 });

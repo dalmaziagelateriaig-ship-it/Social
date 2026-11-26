@@ -5,7 +5,7 @@ import { errorResponse } from "@/lib/http";
 export async function POST() {
   try {
     return Response.json(
-      await suggestBestTimes({ profile: getProfile(), posts: listPosts() }),
+      await suggestBestTimes({ profile: await getProfile(), posts: await listPosts() }),
     );
   } catch (error) {
     return errorResponse(error);

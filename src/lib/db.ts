@@ -1,7 +1,5 @@
 import "server-only";
-import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
+import { sql } from "./sql";
 import {
   EMPTY_PROFILE,
   type Post,
@@ -9,41 +7,40 @@ import {
   type Profile,
 } from "./types";
 
-const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "app.db");
+const SCHEMA = `
+  CREATE TABLE IF NOT EXISTS profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    data TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS posts (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    type TEXT NOT NULL,
+    platforms TEXT NOT NULL,
+    captions TEXT NOT NULL,
+    hashtags TEXT NOT NULL,
+    scheduled_at TEXT,
+    status TEXT NOT NULL,
+    image_idea TEXT NOT NULL DEFAULT '',
+    media TEXT NOT NULL DEFAULT '[]',
+    video_script TEXT NOT NULL DEFAULT '',
+    notes TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS posts_scheduled_at ON posts (scheduled_at);
+`;
 
-let db: DatabaseSync | null = null;
+let ready: Promise<void> | null = null;
 
-function getDb(): DatabaseSync {
-  if (db) return db;
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  db = new DatabaseSync(DB_PATH);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS profile (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      data TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS posts (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      type TEXT NOT NULL,
-      platforms TEXT NOT NULL,
-      captions TEXT NOT NULL,
-      hashtags TEXT NOT NULL,
-      scheduled_at TEXT,
-      status TEXT NOT NULL,
-      image_idea TEXT NOT NULL DEFAULT '',
-      video_script TEXT NOT NULL DEFAULT '',
-      notes TEXT NOT NULL DEFAULT '',
-      created_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS posts_scheduled_at ON posts (scheduled_at);
-  `);
-  // Columns added after the first version.
-  const columns = (db.prepare("PRAGMA table_info(posts)").all() as { name: string }[]).map((c) => c.name);
-  if (!columns.includes("media")) {
-    db.exec("ALTER TABLE posts ADD COLUMN media TEXT NOT NULL DEFAULT '[]'");
-  }
-  return db;
+/** Database handle, creating the tables on first use. */
+async function db() {
+  const s = await sql();
+  ready ??= s.exec(SCHEMA).catch((e) => {
+    ready = null;
+    throw e;
+  });
+  await ready;
+  return s;
 }
 
 type PostRow = {
@@ -64,7 +61,7 @@ type PostRow = {
 
 function rowToPost(row: PostRow): Post {
   return {
-    id: row.id,
+    id: Number(row.id),
     title: row.title,
     type: row.type as Post["type"],
     platforms: JSON.parse(row.platforms),
@@ -80,92 +77,70 @@ function rowToPost(row: PostRow): Post {
   };
 }
 
-export function getProfile(): Profile {
-  const row = getDb().prepare("SELECT data FROM profile WHERE id = 1").get() as
-    | { data: string }
-    | undefined;
+function postValues(input: PostInput): unknown[] {
+  return [
+    input.title,
+    input.type,
+    JSON.stringify(input.platforms),
+    JSON.stringify(input.captions),
+    JSON.stringify(input.hashtags),
+    input.scheduledAt,
+    input.status,
+    input.imageIdea,
+    JSON.stringify(input.media),
+    input.videoScript,
+    input.notes,
+  ];
+}
+
+export async function getProfile(): Promise<Profile> {
+  const [row] = await (await db()).query<{ data: string }>("SELECT data FROM profile WHERE id = 1");
   return row ? { ...EMPTY_PROFILE, ...JSON.parse(row.data) } : { ...EMPTY_PROFILE };
 }
 
-export function saveProfile(profile: Profile): Profile {
-  getDb()
-    .prepare(
-      "INSERT INTO profile (id, data) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data",
-    )
-    .run(JSON.stringify(profile));
+export async function saveProfile(profile: Profile): Promise<Profile> {
+  await (await db()).query(
+    "INSERT INTO profile (id, data) VALUES (1, $1) ON CONFLICT (id) DO UPDATE SET data = excluded.data",
+    [JSON.stringify(profile)],
+  );
   return profile;
 }
 
 /** Posts in a date range (inclusive "YYYY-MM-DD" bounds), or all posts when no range. */
-export function listPosts(range?: { from: string; to: string }): Post[] {
-  const d = getDb();
+export async function listPosts(range?: { from: string; to: string }): Promise<Post[]> {
+  const d = await db();
   const rows = range
-    ? d
-        .prepare(
-          "SELECT * FROM posts WHERE scheduled_at >= ? AND scheduled_at < ? ORDER BY scheduled_at",
-        )
-        .all(range.from, `${range.to}T99`)
-    : d
-        .prepare(
-          "SELECT * FROM posts ORDER BY scheduled_at IS NULL, scheduled_at, id DESC",
-        )
-        .all();
-  return (rows as PostRow[]).map(rowToPost);
+    ? await d.query<PostRow>(
+        "SELECT * FROM posts WHERE scheduled_at >= $1 AND scheduled_at < $2 ORDER BY scheduled_at",
+        [range.from, `${range.to}T99`],
+      )
+    : await d.query<PostRow>("SELECT * FROM posts ORDER BY scheduled_at NULLS LAST, id DESC");
+  return rows.map(rowToPost);
 }
 
-export function getPost(id: number): Post | null {
-  const row = getDb().prepare("SELECT * FROM posts WHERE id = ?").get(id) as
-    | PostRow
-    | undefined;
+export async function getPost(id: number): Promise<Post | null> {
+  const [row] = await (await db()).query<PostRow>("SELECT * FROM posts WHERE id = $1", [id]);
   return row ? rowToPost(row) : null;
 }
 
-export function createPost(input: PostInput): Post {
-  const result = getDb()
-    .prepare(
-      `INSERT INTO posts (title, type, platforms, captions, hashtags, scheduled_at, status, image_idea, media, video_script, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    )
-    .run(
-      input.title,
-      input.type,
-      JSON.stringify(input.platforms),
-      JSON.stringify(input.captions),
-      JSON.stringify(input.hashtags),
-      input.scheduledAt,
-      input.status,
-      input.imageIdea,
-      JSON.stringify(input.media),
-      input.videoScript,
-      input.notes,
-      new Date().toISOString(),
-    );
-  return getPost(Number(result.lastInsertRowid))!;
+export async function createPost(input: PostInput): Promise<Post> {
+  const [row] = await (await db()).query<PostRow>(
+    `INSERT INTO posts (title, type, platforms, captions, hashtags, scheduled_at, status, image_idea, media, video_script, notes, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+    [...postValues(input), new Date().toISOString()],
+  );
+  return rowToPost(row);
 }
 
-export function updatePost(id: number, input: PostInput): Post | null {
-  getDb()
-    .prepare(
-      `UPDATE posts SET title = ?, type = ?, platforms = ?, captions = ?, hashtags = ?, scheduled_at = ?,
-       status = ?, image_idea = ?, media = ?, video_script = ?, notes = ? WHERE id = ?`,
-    )
-    .run(
-      input.title,
-      input.type,
-      JSON.stringify(input.platforms),
-      JSON.stringify(input.captions),
-      JSON.stringify(input.hashtags),
-      input.scheduledAt,
-      input.status,
-      input.imageIdea,
-      JSON.stringify(input.media),
-      input.videoScript,
-      input.notes,
-      id,
-    );
-  return getPost(id);
+export async function updatePost(id: number, input: PostInput): Promise<Post | null> {
+  const [row] = await (await db()).query<PostRow>(
+    `UPDATE posts SET title = $1, type = $2, platforms = $3, captions = $4, hashtags = $5, scheduled_at = $6,
+     status = $7, image_idea = $8, media = $9, video_script = $10, notes = $11 WHERE id = $12 RETURNING *`,
+    [...postValues(input), id],
+  );
+  return row ? rowToPost(row) : null;
 }
 
-export function deletePost(id: number): void {
-  getDb().prepare("DELETE FROM posts WHERE id = ?").run(id);
+export async function deletePost(id: number): Promise<void> {
+  await (await db()).query("DELETE FROM posts WHERE id = $1", [id]);
 }
