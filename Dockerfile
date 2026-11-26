@@ -10,7 +10,7 @@ WORKDIR /app
 ENV NODE_ENV=production \
     TZ=Europe/Rome \
     NODE_NO_WARNINGS=1 \
-    DATABASE_PATH=/data/app.db \
+    DATABASE_PATH=/data/pglite \
     MEDIA_PATH=/data/media
 COPY --from=build /app ./
 VOLUME /data

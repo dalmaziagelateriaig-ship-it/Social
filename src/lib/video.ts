@@ -4,7 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import ffmpegStatic from "ffmpeg-static";
-import { mediaFile, saveMedia } from "./media";
+import { saveMedia, withLocalMedia } from "./media";
 
 import { VIDEO_FORMATS, type FitMode, type VideoFormat } from "./videoFormats";
 
@@ -55,12 +55,6 @@ async function hasAudio(file: string): Promise<boolean> {
   return /Stream #\d+:\d+.*: Audio:/.test(stderr);
 }
 
-function resolveMedia(url: string): string {
-  const name = url.replace(/^\/api\/media\//, "");
-  const file = mediaFile(name);
-  if (!file) throw new VideoError("Uno dei file non esiste più. Ricaricalo.");
-  return file.filePath;
-}
 
 /**
  * Builds the ffmpeg filter graph: each clip is trimmed and fitted to the output
@@ -116,8 +110,19 @@ export function buildFilterGraph(opts: {
 
 /** Renders the edited video, stores it in the media folder and returns its URL. */
 export async function renderVideo(req: VideoEditRequest): Promise<string> {
+  const locals = await Promise.all(
+    [...req.clips.map((c) => c.url), ...(req.overlayUrl ? [req.overlayUrl] : [])].map(withLocalMedia),
+  );
+  try {
+    return await render(req, locals.map((l) => l.filePath));
+  } finally {
+    locals.forEach((l) => l.release());
+  }
+}
+
+async function render(req: VideoEditRequest, paths: string[]): Promise<string> {
   const { w, h } = VIDEO_FORMATS[req.format];
-  const files = req.clips.map((c) => resolveMedia(c.url));
+  const files = paths.slice(0, req.clips.length);
   const audio = req.mute ? files.map(() => false) : await Promise.all(files.map(hasAudio));
 
   const args = ["-hide_banner", "-y"];
@@ -133,7 +138,7 @@ export async function renderVideo(req: VideoEditRequest): Promise<string> {
 
   let overlayInput: number | null = null;
   if (req.overlayUrl) {
-    args.push("-i", resolveMedia(req.overlayUrl));
+    args.push("-i", paths[req.clips.length]);
     overlayInput = nextInput++;
   }
 
@@ -150,7 +155,8 @@ export async function renderVideo(req: VideoEditRequest): Promise<string> {
   const out = path.join(os.tmpdir(), `social-video-${process.pid}-${Date.now()}.mp4`);
   args.push("-filter_complex", graph, "-map", videoOut);
   if (audioOut) args.push("-map", audioOut, "-c:a", "aac", "-b:a", "128k");
-  args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-movflags", "+faststart", out);
+  // Two threads keep memory low on small (free) servers.
+  args.push("-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-threads", "2", "-movflags", "+faststart", out);
 
   try {
     const { code, stderr } = await run(args);
@@ -158,7 +164,7 @@ export async function renderVideo(req: VideoEditRequest): Promise<string> {
       console.error("ffmpeg failed", stderr);
       throw new VideoError("Non sono riuscito a creare il video. Controlla che i file siano video validi.");
     }
-    return saveMedia(fs.readFileSync(out), "video/mp4");
+    return await saveMedia(fs.readFileSync(out), "video/mp4");
   } finally {
     fs.rmSync(out, { force: true });
   }

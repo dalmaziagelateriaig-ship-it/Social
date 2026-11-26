@@ -6,7 +6,7 @@ import { postInputSchema } from "@/lib/validation";
 export async function GET(request: NextRequest) {
   const from = request.nextUrl.searchParams.get("from");
   const to = request.nextUrl.searchParams.get("to");
-  return Response.json(listPosts(from && to ? { from, to } : undefined));
+  return Response.json(await listPosts(from && to ? { from, to } : undefined));
 }
 
 export async function POST(request: NextRequest) {
@@ -15,9 +15,11 @@ export async function POST(request: NextRequest) {
     // Accepts one post or an array (used when saving a whole monthly plan).
     if (Array.isArray(body)) {
       const inputs = body.map((item) => postInputSchema.parse(item));
-      return Response.json(inputs.map(createPost), { status: 201 });
+      const created = [];
+      for (const input of inputs) created.push(await createPost(input));
+      return Response.json(created, { status: 201 });
     }
-    return Response.json(createPost(postInputSchema.parse(body)), { status: 201 });
+    return Response.json(await createPost(postInputSchema.parse(body)), { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

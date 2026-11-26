@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const { prompt, format } = bodySchema.parse(await request.json());
     const image = await generateImage(prompt, format);
-    return Response.json({ url: saveMedia(image.data, image.mime) }, { status: 201 });
+    return Response.json({ url: await saveMedia(image.data, image.mime) }, { status: 201 });
   } catch (error) {
     return errorResponse(error);
   }

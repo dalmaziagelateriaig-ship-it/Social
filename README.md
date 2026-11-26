@@ -15,7 +15,7 @@ Web app per gestire Instagram, Facebook e TikTok della propria attività, con Cl
 
 ## Avvio in locale
 
-Serve Node.js 22.13 o successivo.
+Serve Node.js 22 o successivo.
 
 ```bash
 npm install
@@ -25,23 +25,23 @@ npm run dev
 
 Apri http://localhost:3000.
 
-I dati sono salvati in un database SQLite in `data/app.db`, foto e video in `data/media/` (non inclusi nel repository).
+In locale i dati sono salvati in un database Postgres integrato in `data/pglite`, foto e video in `data/media/` (non inclusi nel repository). Online si usano Supabase per database e file (vedi sotto).
 
 Per creare immagini con l'AI serve anche una chiave di OpenAI **oppure** di Google Gemini (vedi `.env.example`): Claude scrive i testi e descrive l'immagine, il servizio di immagini la disegna.
 
-## Pubblicare l'app online (Railway)
+## Pubblicare l'app online gratis (Render + Supabase)
 
-L'app gira in un container Docker con un disco per database, foto e video. Su [Railway](https://railway.com):
+- **Supabase** (gratuito) conserva database, foto e video.
+- **Render** (gratuito) fa girare l'app. Sul piano gratuito l'app si sospende dopo 15 minuti senza visite e la prima apertura successiva richiede circa un minuto.
 
-1. Crea un account e scegli **New Project › Deploy from GitHub repo**, poi questo repository.
-2. Nel servizio, apri **Variables** e aggiungi:
-   - `ANTHROPIC_API_KEY`: la chiave di Claude
-   - `APP_PASSWORD`: la password per entrare nell'app (il nome utente può essere qualsiasi)
-   - facoltativo `OPENAI_API_KEY` o `GEMINI_API_KEY` per le immagini
-3. Aggiungi un **Volume** montato su `/data` (lì restano database, foto e video).
-4. In **Settings › Networking** clicca **Generate Domain**: quello è il link dell'app.
+1. **Supabase**: crea un progetto su [supabase.com](https://supabase.com) (regione Europa) e annota la password del database. Poi:
+   - in **Connect › Session pooler** copia l'indirizzo che inizia con `postgresql://` e sostituisci `[YOUR-PASSWORD]` con la password: è `DATABASE_URL`;
+   - in **Project Settings › API** copia il **Project URL** (`SUPABASE_URL`) e la chiave **secret** o **service_role** (`SUPABASE_SERVICE_ROLE_KEY`).
+2. **Render**: su [render.com](https://render.com) accedi con GitHub, scegli **New › Blueprint** e questo repository. Render legge `render.yaml` e chiede i valori:
+   `ANTHROPIC_API_KEY`, `APP_PASSWORD` (la password per entrare nell'app), `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e, se vuoi le immagini AI, `OPENAI_API_KEY` o `GEMINI_API_KEY` (gli altri si possono lasciare vuoti).
+3. Al termine Render mostra il link dell'app (`https://social-studio-….onrender.com`).
 
-Ogni modifica unita al ramo `main` viene pubblicata in automatico.
+Ogni modifica unita al ramo `main` viene pubblicata in automatico. Sul piano gratuito di Supabase ogni file può pesare al massimo 50 MB.
 
 ## Struttura
 
@@ -50,7 +50,7 @@ Ogni modifica unita al ramo `main` viene pubblicata in automatico.
 - `src/lib/images.ts` generazione immagini (OpenAI o Google Gemini)
 - `src/lib/video.ts` montaggio video con ffmpeg
 - `src/lib/media.ts` archivio di foto e video
-- `src/lib/db.ts` database
+- `src/lib/db.ts` e `src/lib/sql.ts` database (Postgres: Supabase online, PGlite in locale)
 - `src/components/` componenti condivisi (editor dei contenuti, interfaccia)
 
 ## Prossime fasi
@@ -58,4 +58,3 @@ Ogni modifica unita al ramo `main` viene pubblicata in automatico.
 1. Collegamento account Instagram e Facebook (Meta Graph API) e TikTok (Content Posting API) con pubblicazione automatica.
 2. Report su visualizzazioni, follower e analisi della nicchia dai dati reali; orari migliori calcolati sui propri post.
 3. Sottotitoli automatici dei video (serve un servizio di trascrizione).
-4. Database online (es. Supabase/Postgres) e accesso con password per usare l'app da qualsiasi dispositivo.

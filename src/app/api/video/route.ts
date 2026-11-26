@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { errorResponse } from "@/lib/http";
+import { mediaUrlSchema } from "@/lib/validation";
 import { VIDEO_FORMATS, renderVideo, type VideoFormat } from "@/lib/video";
 
-const mediaUrl = z.string().regex(/^\/api\/media\/[a-f0-9-]+\.[a-z0-9]+$/);
+const mediaUrl = mediaUrlSchema;
 
 const bodySchema = z.object({
   clips: z
