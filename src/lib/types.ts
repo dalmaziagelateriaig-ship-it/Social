@@ -17,14 +17,45 @@ export const POST_TYPE_LABELS: Record<PostType, string> = {
   storia: "Storia",
 };
 
-export const POST_STATUSES = ["bozza", "programmato", "pubblicato"] as const;
+export const POST_STATUSES = ["bozza", "programmato", "in_pubblicazione", "pubblicato", "errore"] as const;
 export type PostStatus = (typeof POST_STATUSES)[number];
 
 export const POST_STATUS_LABELS: Record<PostStatus, string> = {
   bozza: "Bozza",
   programmato: "Programmato",
+  in_pubblicazione: "In pubblicazione",
   pubblicato: "Pubblicato",
+  errore: "Errore di pubblicazione",
 };
+
+export type PublicationStatus = "in_corso" | "pubblicato" | "errore";
+
+/** Outcome of publishing one post on one platform. */
+export interface Publication {
+  postId: number;
+  platform: Platform;
+  status: PublicationStatus;
+  externalId: string | null;
+  error: string | null;
+  updatedAt: string;
+}
+
+/** What the UI may know about connected accounts (never tokens). */
+export interface AccountsSummary {
+  publicUrl: string | null;
+  meta: {
+    configured: boolean;
+    connected: boolean;
+    pages: { id: string; name: string; instagram: string | null }[];
+    selectedPageId: string | null;
+  };
+  tiktok: {
+    configured: boolean;
+    connected: boolean;
+    username: string | null;
+    expiresAt: string | null;
+  };
+}
 
 export type Captions = Partial<Record<Platform, string>>;
 

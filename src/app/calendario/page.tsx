@@ -12,7 +12,9 @@ const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 const STATUS_STYLES: Record<Post["status"], string> = {
   bozza: "border-l-stone-400 bg-stone-50",
   programmato: "border-l-brand-500 bg-brand-50",
+  in_pubblicazione: "border-l-amber-500 bg-amber-50",
   pubblicato: "border-l-emerald-500 bg-emerald-50",
+  errore: "border-l-red-500 bg-red-50",
 };
 
 function CalendarPageContent() {
@@ -135,6 +137,7 @@ function CalendarPageContent() {
         <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-stone-400" />Bozza</span>
         <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-brand-500" />Programmato</span>
         <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-emerald-500" />Pubblicato</span>
+        <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />Errore</span>
       </div>
 
       {unscheduled.length > 0 && (

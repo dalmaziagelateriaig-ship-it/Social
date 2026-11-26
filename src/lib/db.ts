@@ -2,6 +2,9 @@ import "server-only";
 import { sql } from "./sql";
 import {
   EMPTY_PROFILE,
+  type Platform,
+  type Publication,
+  type PublicationStatus,
   type Post,
   type PostInput,
   type Profile,
@@ -28,6 +31,19 @@ const SCHEMA = `
     created_at TEXT NOT NULL
   );
   CREATE INDEX IF NOT EXISTS posts_scheduled_at ON posts (scheduled_at);
+  CREATE TABLE IF NOT EXISTS accounts (
+    platform TEXT PRIMARY KEY,
+    data TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS publications (
+    post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    platform TEXT NOT NULL,
+    status TEXT NOT NULL,
+    external_id TEXT,
+    error TEXT,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (post_id, platform)
+  );
 `;
 
 let ready: Promise<void> | null = null;
@@ -143,4 +159,82 @@ export async function updatePost(id: number, input: PostInput): Promise<Post | n
 
 export async function deletePost(id: number): Promise<void> {
   await (await db()).query("DELETE FROM posts WHERE id = $1", [id]);
+}
+
+// ---------- Connected accounts (tokens stay on the server) ----------
+
+export async function getAccount<T>(platform: "meta" | "tiktok"): Promise<T | null> {
+  const [row] = await (await db()).query<{ data: string }>("SELECT data FROM accounts WHERE platform = $1", [platform]);
+  return row ? (JSON.parse(row.data) as T) : null;
+}
+
+export async function saveAccount(platform: "meta" | "tiktok", data: unknown): Promise<void> {
+  await (await db()).query(
+    "INSERT INTO accounts (platform, data) VALUES ($1, $2) ON CONFLICT (platform) DO UPDATE SET data = excluded.data",
+    [platform, JSON.stringify(data)],
+  );
+}
+
+export async function deleteAccount(platform: "meta" | "tiktok"): Promise<void> {
+  await (await db()).query("DELETE FROM accounts WHERE platform = $1", [platform]);
+}
+
+// ---------- Publishing results ----------
+
+type PublicationRow = {
+  post_id: number;
+  platform: string;
+  status: string;
+  external_id: string | null;
+  error: string | null;
+  updated_at: string;
+};
+
+export async function listPublications(postId: number): Promise<Publication[]> {
+  const rows = await (await db()).query<PublicationRow>(
+    "SELECT * FROM publications WHERE post_id = $1 ORDER BY platform",
+    [postId],
+  );
+  return rows.map((r) => ({
+    postId: Number(r.post_id),
+    platform: r.platform as Platform,
+    status: r.status as PublicationStatus,
+    externalId: r.external_id,
+    error: r.error,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export async function savePublication(
+  postId: number,
+  platform: Platform,
+  status: PublicationStatus,
+  externalId: string | null = null,
+  error: string | null = null,
+): Promise<void> {
+  await (await db()).query(
+    `INSERT INTO publications (post_id, platform, status, external_id, error, updated_at) VALUES ($1, $2, $3, $4, $5, $6)
+     ON CONFLICT (post_id, platform) DO UPDATE SET status = excluded.status, external_id = excluded.external_id,
+     error = excluded.error, updated_at = excluded.updated_at`,
+    [postId, platform, status, externalId, error, new Date().toISOString()],
+  );
+}
+
+/** Moves a post from one status to another; false if it was no longer in `from` (someone else took it). */
+export async function transitionPostStatus(id: number, from: Post["status"], to: Post["status"]): Promise<boolean> {
+  const rows = await (await db()).query("UPDATE posts SET status = $1 WHERE id = $2 AND status = $3 RETURNING id", [to, id, from]);
+  return rows.length > 0;
+}
+
+export async function setPostStatus(id: number, status: Post["status"]): Promise<void> {
+  await (await db()).query("UPDATE posts SET status = $1 WHERE id = $2", [status, id]);
+}
+
+/** Scheduled posts whose time (local "YYYY-MM-DDTHH:mm") has come. */
+export async function listDuePosts(nowLocal: string): Promise<Post[]> {
+  const rows = await (await db()).query<PostRow>(
+    "SELECT * FROM posts WHERE status = 'programmato' AND scheduled_at IS NOT NULL AND scheduled_at <= $1 ORDER BY scheduled_at",
+    [nowLocal],
+  );
+  return rows.map(rowToPost);
 }

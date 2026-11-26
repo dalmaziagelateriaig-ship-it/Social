@@ -29,5 +29,5 @@ function safeEqual(a: string, b: string): boolean {
 }
 
 export const config = {
-  matcher: ["/((?!api/media/|api/health|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api/media/|api/health|api/cron|_next/static|_next/image|favicon.ico).*)"],
 };
