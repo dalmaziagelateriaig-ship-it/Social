@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Panoramica", icon: "🏠" },
   { href: "/calendario", label: "Calendario", icon: "📅" },
   { href: "/crea", label: "Crea con AI", icon: "✨" },
+  { href: "/video", label: "Video", icon: "🎬" },
   { href: "/piano", label: "Piano del mese", icon: "🗓️" },
   { href: "/orari", label: "Orari migliori", icon: "⏰" },
   { href: "/profilo", label: "La mia attività", icon: "🏪" },

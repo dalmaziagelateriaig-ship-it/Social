@@ -10,6 +10,7 @@ Web app per gestire Instagram, Facebook e TikTok della propria attività, con Cl
 - **Piano del mese**: Claude prepara il calendario editoriale del mese (stagione, ricorrenze, obiettivi); scegli cosa tenere e lo aggiungi al calendario. Dal contenuto puoi poi far scrivere i testi con "Scrivi con AI".
 - **Orari migliori**: giorni e fasce orarie consigliate per ogni social.
 - **Foto e video**: in ogni contenuto puoi caricare le tue foto e i tuoi video, oppure creare un'immagine con l'AI partendo dall'idea suggerita da Claude (formati quadrato, verticale e storia 9:16).
+- **Video**: unisci più clip, tagliale, scegli il formato (9:16 per Reel e TikTok, 4:5, 1:1, 16:9) con sfondo sfocato o riempimento, togli l'audio e aggiungi un testo in sovrimpressione, anche suggerito dall'AI. Il video finito si scarica o diventa un contenuto del calendario. Usa ffmpeg, installato con le dipendenze.
 - **La mia attività**: profilo, prodotti, clienti e tono di voce che l'AI usa in ogni richiesta.
 
 ## Avvio in locale
@@ -33,6 +34,7 @@ Per creare immagini con l'AI serve anche una chiave di OpenAI **oppure** di Goog
 - `src/app/` pagine e API (`src/app/api/...`)
 - `src/lib/ai.ts` tutte le chiamate a Claude (modello `claude-opus-5-5`, output strutturato)
 - `src/lib/images.ts` generazione immagini (OpenAI o Google Gemini)
+- `src/lib/video.ts` montaggio video con ffmpeg
 - `src/lib/media.ts` archivio di foto e video
 - `src/lib/db.ts` database
 - `src/components/` componenti condivisi (editor dei contenuti, interfaccia)
@@ -41,5 +43,5 @@ Per creare immagini con l'AI serve anche una chiave di OpenAI **oppure** di Goog
 
 1. Collegamento account Instagram e Facebook (Meta Graph API) e TikTok (Content Posting API) con pubblicazione automatica.
 2. Report su visualizzazioni, follower e analisi della nicchia dai dati reali; orari migliori calcolati sui propri post.
-3. Editing video (tagli, sottotitoli, formati verticali).
+3. Sottotitoli automatici dei video (serve un servizio di trascrizione).
 4. Database online (es. Supabase/Postgres) e accesso con password per usare l'app da qualsiasi dispositivo.

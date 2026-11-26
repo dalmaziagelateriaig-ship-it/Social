@@ -289,3 +289,22 @@ ${planned ? `Già in programma:\n${planned}` : "Non c'è ancora niente in progra
     "low",
   );
 }
+
+// ---------- On-screen text for videos ----------
+
+export const hooksSchema = z.object({
+  options: z.array(z.string()).describe("5 testi brevi da mettere sul video, massimo 8 parole ciascuno"),
+});
+export type Hooks = z.infer<typeof hooksSchema>;
+
+export async function suggestVideoText(input: { topic: string; profile: Profile }): Promise<Hooks> {
+  return generate(
+    hooksSchema,
+`${profileContext(input.profile)}
+
+Scrivi 5 testi da sovrapporre a un video breve per Reel e TikTok. Devono catturare l'attenzione nei primi 2 secondi, essere leggibili al volo (massimo 8 parole) e usare al massimo un'emoji.
+
+Il video parla di: ${input.topic}`,
+    "low",
+  );
+}
