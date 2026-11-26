@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
+  // ffmpeg-static resolves its binary relative to its own folder, so keep it unbundled.
+  serverExternalPackages: ["ffmpeg-static"],
   partialPrefetching: true,
   turbopack: {
     rules: {
