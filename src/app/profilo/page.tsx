@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button, Card, ErrorBox, Field, PageHeader, Spinner, inputClass } from "@/components/ui";
+import { Button, Card, ErrorBox, Field, LinkButton, PageHeader, Spinner, inputClass } from "@/components/ui";
 import { api } from "@/lib/api";
 import { EMPTY_PROFILE, type Profile } from "@/lib/types";
 
@@ -81,16 +81,8 @@ export default function ProfilePage() {
 
       <Card className="mt-6">
         <div className="mb-1 text-sm font-semibold">Account social</div>
-        <p className="mb-3 text-sm text-stone-500">
-          Il collegamento con Instagram, Facebook e TikTok per pubblicare in automatico e leggere le statistiche arriverà nella prossima fase.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {["Instagram", "Facebook", "TikTok"].map((s) => (
-            <span key={s} className="rounded-lg border border-dashed border-stone-300 px-3 py-2 text-sm text-stone-400">
-              {s} · da collegare
-            </span>
-          ))}
-        </div>
+        <p className="mb-3 text-sm text-stone-500">Collega Instagram, Facebook e TikTok per pubblicare in automatico.</p>
+        <LinkButton href="/account" variant="secondary">Vai agli account</LinkButton>
       </Card>
     </div>
   );

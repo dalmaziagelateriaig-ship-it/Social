@@ -169,3 +169,25 @@ async function render(req: VideoEditRequest, paths: string[]): Promise<string> {
     fs.rmSync(out, { force: true });
   }
 }
+
+/** Converts an image (PNG, WEBP…) to JPEG, which Instagram requires. Returns the new media URL. */
+export async function convertToJpeg(url: string): Promise<string> {
+  const local = await withLocalMedia(url);
+  const input = local.filePath;
+  const out = path.join(os.tmpdir(), `social-jpeg-${process.pid}-${Date.now()}.jpg`);
+  try {
+    // White background for transparent images, high quality.
+    const { code, stderr } = await run(
+      ["-hide_banner", "-y", "-i", input, "-vf", "format=rgba,geq=r='r(X,Y)*alpha(X,Y)/255+255*(1-alpha(X,Y)/255)':g='g(X,Y)*alpha(X,Y)/255+255*(1-alpha(X,Y)/255)':b='b(X,Y)*alpha(X,Y)/255+255*(1-alpha(X,Y)/255)',format=yuvj420p", "-q:v", "2", "-frames:v", "1", out],
+      60_000,
+    );
+    if (code !== 0) {
+      console.error("jpeg conversion failed", stderr);
+      throw new VideoError("Non sono riuscito a convertire l'immagine in JPEG.");
+    }
+    return await saveMedia(fs.readFileSync(out), "image/jpeg");
+  } finally {
+    local.release();
+    fs.rmSync(out, { force: true });
+  }
+}

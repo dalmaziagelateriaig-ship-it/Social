@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/piano", label: "Piano del mese", icon: "🗓️" },
   { href: "/orari", label: "Orari migliori", icon: "⏰" },
   { href: "/profilo", label: "La mia attività", icon: "🏪" },
+  { href: "/account", label: "Account social", icon: "🔗" },
 ];
 
 export function Nav() {

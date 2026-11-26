@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import type { GeneratedPost } from "@/lib/ai";
 import {
@@ -11,6 +11,7 @@ import {
   POST_TYPES,
   type Post,
   type PostInput,
+  type Publication,
 } from "@/lib/types";
 import { MediaGallery } from "./MediaGallery";
 import { Button, ErrorBox, Field, PlatformPicker, Spinner, inputClass } from "./ui";
@@ -59,6 +60,15 @@ export function PostEditor({
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [publications, setPublications] = useState<Publication[]>([]);
+  const [publishing, setPublishing] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+    api<Publication[]>(`/api/posts/${id}/publish`)
+      .then(setPublications)
+      .catch(() => {});
+  }, [id]);
 
   const set = <K extends keyof PostInput>(key: K, value: PostInput[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
@@ -104,6 +114,33 @@ export function PostEditor({
       setError((e as Error).message);
     } finally {
       setGenerating(false);
+    }
+  }
+
+  /** Saves the changes, then publishes on all selected platforms right away. */
+  async function publish() {
+    if (!id) return;
+    setPublishing(true);
+    setError(null);
+    try {
+      await api(`/api/posts/${id}`, {
+        method: "PUT",
+        body: {
+          ...draft,
+          hashtags: hashtagText
+            .split(/[\s,]+/)
+            .map((h) => h.replace(/^#/, "").trim())
+            .filter(Boolean),
+        },
+      });
+      const result = await api<Publication[]>(`/api/posts/${id}/publish`, { method: "POST" });
+      setPublications(result);
+      const failed = result.some((r) => r.status === "errore");
+      set("status", failed ? "errore" : "pubblicato");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -208,6 +245,18 @@ export function PostEditor({
             <textarea rows={2} className={inputClass} value={draft.notes} onChange={(e) => set("notes", e.target.value)} />
           </Field>
 
+          {publications.length > 0 && (
+            <div className="space-y-1 rounded-lg border border-stone-200 p-3 text-sm">
+              <div className="font-medium">Pubblicazione</div>
+              {publications.map((r) => (
+                <div key={r.platform} className={r.status === "errore" ? "text-red-700" : r.status === "pubblicato" ? "text-emerald-700" : "text-stone-600"}>
+                  {PLATFORM_LABELS[r.platform]}:{" "}
+                  {r.status === "pubblicato" ? "pubblicato ✓" : r.status === "in_corso" ? "in corso…" : `errore: ${r.error ?? "sconosciuto"}`}
+                </div>
+              ))}
+            </div>
+          )}
+
           <ErrorBox message={error} />
 
           <div className="flex flex-wrap justify-between gap-2 pt-2">
@@ -222,7 +271,16 @@ export function PostEditor({
               <Button variant="secondary" onClick={onClose}>
                 Annulla
               </Button>
-              <Button onClick={save} disabled={saving}>
+              {id && (
+                <Button
+                  variant="secondary"
+                  onClick={publish}
+                  disabled={saving || publishing || draft.status === "in_pubblicazione" || draft.platforms.length === 0}
+                >
+                  {publishing ? <><Spinner /> Pubblico…</> : "🚀 Pubblica ora"}
+                </Button>
+              )}
+              <Button onClick={save} disabled={saving || publishing}>
                 {saving && <Spinner />} Salva
               </Button>
             </div>

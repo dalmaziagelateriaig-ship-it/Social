@@ -43,6 +43,14 @@ Per creare immagini con l'AI serve anche una chiave di OpenAI **oppure** di Goog
 
 Ogni modifica unita al ramo `main` viene pubblicata in automatico. Sul piano gratuito di Supabase ogni file può pesare al massimo 50 MB.
 
+## Collegare Facebook, Instagram e TikTok
+
+L'app pubblica da sola i contenuti con stato **Programmato** all'ora indicata, oppure subito con **Pubblica ora** nell'editor. Gli account si collegano dalla pagina **Account social**.
+
+1. **Meta (Facebook e Instagram)**: su [developers.facebook.com](https://developers.facebook.com) crea un'app di tipo **Business**, aggiungi il prodotto **Facebook Login for Business** e come URL di reindirizzamento valido `https://<indirizzo-app>/api/auth/meta/callback`. Servono una Pagina Facebook e un account Instagram professionale collegato alla Pagina. Copia **App ID** e **App secret** in `META_APP_ID` e `META_APP_SECRET`. Finché l'app è in modalità sviluppo funziona per gli amministratori dell'app, cioè per te.
+2. **TikTok**: su [developers.tiktok.com](https://developers.tiktok.com) crea un'app, aggiungi **Login Kit** e **Content Posting API** (con Direct Post), redirect URI `https://<indirizzo-app>/api/auth/tiktok/callback`. Copia **Client key** e **Client secret** in `TIKTOK_CLIENT_KEY` e `TIKTOK_CLIENT_SECRET`. Finché TikTok non approva l'app, i video vengono pubblicati come privati.
+3. **Pubblicazione programmata su Render gratuito**: l'app si sospende quando nessuno la usa, quindi serve un servizio che la svegli. Imposta `CRON_SECRET` (una parola a caso) e su [cron-job.org](https://cron-job.org) crea un job gratuito ogni 5 minuti verso `https://<indirizzo-app>/api/cron?secret=<CRON_SECRET>`.
+
 ## Struttura
 
 - `src/app/` pagine e API (`src/app/api/...`)
@@ -50,11 +58,11 @@ Ogni modifica unita al ramo `main` viene pubblicata in automatico. Sul piano gra
 - `src/lib/images.ts` generazione immagini (OpenAI o Google Gemini)
 - `src/lib/video.ts` montaggio video con ffmpeg
 - `src/lib/media.ts` archivio di foto e video
+- `src/lib/social/` collegamento account e pubblicazione su Facebook, Instagram e TikTok
 - `src/lib/db.ts` e `src/lib/sql.ts` database (Postgres: Supabase online, PGlite in locale)
 - `src/components/` componenti condivisi (editor dei contenuti, interfaccia)
 
 ## Prossime fasi
 
-1. Collegamento account Instagram e Facebook (Meta Graph API) e TikTok (Content Posting API) con pubblicazione automatica.
-2. Report su visualizzazioni, follower e analisi della nicchia dai dati reali; orari migliori calcolati sui propri post.
-3. Sottotitoli automatici dei video (serve un servizio di trascrizione).
+1. Report su visualizzazioni, follower e analisi della nicchia dai dati reali; orari migliori calcolati sui propri post.
+2. Sottotitoli automatici dei video (serve un servizio di trascrizione).
